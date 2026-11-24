@@ -277,7 +277,7 @@ html, body {
 }
 
 .pills-scroll-track {
-  display: flex;
+  display: none;
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -855,6 +855,9 @@ html, body {
     display: none;
   }
   .map-hint-pill {
+    display: flex;
+  }
+  .pills-scroll-track {
     display: flex;
   }
   .search-filter-ribbon {
