@@ -235,18 +235,18 @@ function initScene() {
   skyCtx.fillRect(0, 0, 2, 512);
   const skyTex = new THREE.CanvasTexture(skyCanvas);
   scene.background = skyTex;
-  scene.fog = new THREE.FogExp2(0xe8f4f8, 0.006);
+  scene.fog = new THREE.FogExp2(0xe8f4f8, 0.0012);
 
-  camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.5, 400);
+  camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.5, 450);
   updateCam();
 
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 3));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.05;
   el.appendChild(renderer.domElement);
 
   // ── Sky hemisphere light ──
@@ -531,10 +531,8 @@ function rebuild3DWorld() {
       tint.offsetHSL(0, 0, s * 0.03);
       const segMat = new THREE.MeshStandardMaterial({
         color: tint,
-        roughness: 0.15,
-        metalness: 0.65,
-        transparent: true,
-        opacity: 0.88
+        roughness: 0.22,
+        metalness: 0.35
       });
       const seg = new THREE.Mesh(segGeo, segMat);
       seg.position.y = 0.6 + s * segH + segH / 2;
@@ -619,13 +617,14 @@ function rebuild3DWorld() {
 
 function makeLabel(emoji, name, count, color) {
   const c = document.createElement('canvas');
-  c.width = 512; c.height = 196;
+  c.width = 1024; c.height = 392;
   const ctx = c.getContext('2d');
+  ctx.scale(2, 2);
 
   // Shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.25)';
-  ctx.shadowBlur = 16;
-  ctx.shadowOffsetY = 4;
+  ctx.shadowColor = 'rgba(0,0,0,0.22)';
+  ctx.shadowBlur = 12;
+  ctx.shadowOffsetY = 3;
 
   // Card background with crisp white + black border
   ctx.fillStyle = '#ffffff';
@@ -675,8 +674,11 @@ function makeLabel(emoji, name, count, color) {
   }
 
   const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 1.0, depthTest: false });
   const sprite = new THREE.Sprite(mat);
   sprite.scale.set(14, 5.4, 1);
   return sprite;
