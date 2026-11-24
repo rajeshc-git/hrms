@@ -1,0 +1,11 @@
+node_modules/
+frontend/dist/
+*.db
+.DS_Store
+frontend_bundle.h
+manifest_json.h
+sw_js.h
+server/frontend_bundle.h
+server/manifest_json.h
+server/sw_js.h
+bharat_hr_server

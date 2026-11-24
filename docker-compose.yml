@@ -1,0 +1,26 @@
+services:
+  bharat-hr-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bharat_hr_app
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    volumes:
+      - hr_data:/data
+    environment:
+      - PORT=5678
+    deploy:
+      resources:
+        limits:
+          memory: 10M # Far above the < 1MB actual RSS target to demonstrate headroom
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2m"
+        max-file: "2"
+
+volumes:
+  hr_data:
+    driver: local

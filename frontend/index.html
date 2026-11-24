@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bharat HR Portal</title>
+
+  <!-- PWA: Add to Home Screen Support (iOS + Android) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Bharat HR">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="application-name" content="Bharat HR Portal">
+  <meta name="description" content="Indian IT & Corporate HR Contact Manager with 3D Campus">
+  <link rel="manifest" href="/manifest.json">
+
+  <!-- PWA Icons -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%232563eb'/><text x='96' y='125' font-size='96' text-anchor='middle' fill='white' font-family='system-ui' font-weight='800'>HR</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%232563eb'/><text x='16' y='22' font-size='15' text-anchor='middle' fill='white' font-family='system-ui' font-weight='800'>HR</text></svg>">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- 3D Canvas Background (only visible in 3D Campus mode) -->
+  <div id="three-container" class="three-hidden"></div>
+
+  <!-- App Shell -->
+  <div id="app-shell">
+    <!-- Top Navigation Bar -->
+    <header class="top-nav">
+      <div class="nav-inner">
+        <div class="nav-brand">
+          <div class="app-icon">HR</div>
+          <div class="brand-text">
+            <h1>Bharat HR</h1>
+            <span class="brand-sub">IT & Corporate Directory</span>
+          </div>
+        </div>
+
+        <!-- Desktop Segmented View Switcher -->
+        <div class="desktop-view-switch" role="tablist">
+          <button id="desk-tab-list" class="seg-btn active" role="tab">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+            <span>Directory</span>
+          </button>
+          <button id="desk-tab-3d" class="seg-btn" role="tab">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span>3D Campus</span>
+          </button>
+        </div>
+
+        <div class="header-actions">
+          <button id="btn-quick-add" class="btn-add-primary" title="Add HR Contact">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            <span class="btn-add-label">New HR</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Search & Quick Company Filter Ribbon -->
+    <div class="search-filter-ribbon">
+      <div class="ribbon-inner">
+        <div class="search-input-wrap">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="search-input" placeholder="Search HR name, company, role or +91 phone...">
+          <span id="badge-total-count" class="counter-badge">0</span>
+        </div>
+
+        <div id="company-pills" class="pills-scroll-track">
+          <button class="pill active" data-company="all">All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW AREA -->
+    <main id="main-content">
+      <!-- 1. RESPONSIVE DIRECTORY GRID VIEW -->
+      <section id="list-view-section" class="view-panel active-panel">
+        <div class="directory-container">
+          <div id="contacts-list" class="contacts-grid"></div>
+        </div>
+      </section>
+
+      <!-- 2. 3D INTERACTIVE CAMPUS OVERLAY -->
+      <section id="world-3d-overlay" class="view-panel hidden-panel">
+        <div class="map-hint-pill">
+          <span class="pulse-dot"></span>
+          <span>Tap any company tower to view HR contacts · Drag to orbit</span>
+        </div>
+      </section>
+    </main>
+
+    <!-- POPUP 1: COMPANY HR BOTTOM SHEET / MODAL -->
+    <div id="popup-company-modal" class="bottom-sheet-backdrop hidden">
+      <div class="bottom-sheet-modal">
+        <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+        <div class="sheet-header">
+          <div class="sheet-title-group">
+            <h3 id="popup-company-title">TCS</h3>
+            <span id="popup-company-count" class="sheet-badge">0 HR Contacts</span>
+          </div>
+          <button id="btn-close-sheet" class="sheet-close-btn" aria-label="Close">&times;</button>
+        </div>
+        <div id="popup-company-contacts" class="sheet-content-list"></div>
+      </div>
+    </div>
+
+    <!-- POPUP 2: ADD CONTACT MODAL / SHEET -->
+    <div id="modal-add-contact" class="bottom-sheet-backdrop hidden">
+      <div class="bottom-sheet-modal compact-form-sheet">
+        <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+        <div class="sheet-header">
+          <div class="sheet-title-group">
+            <h3>Add HR Contact</h3>
+            <span class="sheet-badge">Indian IT & Corporate Directory</span>
+          </div>
+          <button id="btn-close-form" class="sheet-close-btn" aria-label="Close">&times;</button>
+        </div>
+
+        <form id="contact-form" autocomplete="off">
+          <div class="compact-form-row">
+            <div class="form-field flex-1">
+              <label for="input-name">HR Name *</label>
+              <input type="text" id="input-name" placeholder="Priya Sharma" required maxlength="60">
+            </div>
+            <div class="form-field flex-1">
+              <label for="input-phone">Mobile (+91) *</label>
+              <div class="phone-box">
+                <span class="pfx">+91</span>
+                <input type="tel" id="input-phone" placeholder="98765 43210" required maxlength="15">
+              </div>
+            </div>
+          </div>
+
+          <div class="compact-form-row">
+            <div class="form-field flex-1">
+              <label for="company-select">Company *</label>
+              <select id="company-select" required>
+                <option value="" disabled selected>Select company...</option>
+                <option value="TCS">TCS</option>
+                <option value="Infosys">Infosys</option>
+                <option value="Wipro">Wipro</option>
+                <option value="HCLTech">HCLTech</option>
+                <option value="Tech Mahindra">Tech Mahindra</option>
+                <option value="Cognizant">Cognizant</option>
+                <option value="LTIMindtree">LTIMindtree</option>
+                <option value="Mphasis">Mphasis</option>
+                <option value="Persistent Systems">Persistent Systems</option>
+                <option value="Zoho">Zoho</option>
+                <option value="Capgemini India">Capgemini India</option>
+                <option value="Accenture India">Accenture India</option>
+                <option value="Oracle India">Oracle India</option>
+                <option value="__custom__">+ Other / Custom...</option>
+              </select>
+              <input type="text" id="custom-company-input" class="hidden" placeholder="Enter company name..." maxlength="60">
+            </div>
+            <div class="form-field flex-1">
+              <label for="input-role">Role / Designation *</label>
+              <input type="text" id="input-role" placeholder="Talent Acquisition Lead" required maxlength="60">
+            </div>
+          </div>
+
+          <div class="compact-form-row">
+            <div class="form-field flex-1">
+              <label for="input-email">Email (optional)</label>
+              <input type="email" id="input-email" placeholder="priya@tcs.com" maxlength="80">
+            </div>
+            <div class="form-field flex-1">
+              <label for="input-notes">Notes</label>
+              <input type="text" id="input-notes" placeholder="Cloud & Backend hiring" maxlength="120">
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" id="btn-cancel-form" class="btn-secondary">Cancel</button>
+            <button type="submit" id="btn-submit" class="btn-primary">Save Contact</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MOBILE BOTTOM TAB BAR (<768px only) -->
+    <nav class="bottom-tab-bar">
+      <button id="tab-list" class="tab-item active">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+        <span>Directory</span>
+      </button>
+
+      <button id="tab-3d" class="tab-item">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+        <span>3D Campus</span>
+      </button>
+    </nav>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
