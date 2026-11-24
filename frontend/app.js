@@ -68,7 +68,7 @@ const inputRole = document.getElementById('input-role');
 const inputEmail = document.getElementById('input-email');
 const inputNotes = document.getElementById('input-notes');
 const searchInput = document.getElementById('search-input');
-const badgeTotalCount = document.getElementById('badge-total-count');
+const btnClearSearch = document.getElementById('btn-clear-search');
 const companyPills = document.getElementById('company-pills');
 const contactsList = document.getElementById('contacts-list');
 const popupCompanyModal = document.getElementById('popup-company-modal');
@@ -129,7 +129,6 @@ function getFiltered() {
 }
 
 function renderUI() {
-  badgeTotalCount.textContent = contacts.length;
   renderPills();
   renderCards();
 }
@@ -192,8 +191,9 @@ function cardHtml(c) {
       <div class="action-buttons-wrap">
         <a href="tel:${ph}" class="compact-btn btn-call">📞 Call</a>
         <a href="${wa}" target="_blank" rel="noopener" class="compact-btn btn-wa">💬 WhatsApp</a>
-        <button class="compact-btn btn-copy" data-copy="${ph}">📋 Copy</button>
-        <button class="compact-btn btn-del" data-delete="${c.id}" title="Delete">✕</button>
+        <button class="compact-btn btn-del" data-delete="${c.id}" title="Delete" aria-label="Delete">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        </button>
       </div>
     </div>`;
 }
@@ -924,7 +924,19 @@ contactForm.addEventListener('submit', async e => {
   modalAddContact.classList.add('hidden');
 });
 
-searchInput.addEventListener('input', e => { searchQuery = e.target.value; renderCards(); });
+searchInput.addEventListener('input', e => {
+  searchQuery = e.target.value;
+  btnClearSearch.classList.toggle('hidden', !searchQuery);
+  renderCards();
+});
+
+btnClearSearch.addEventListener('click', () => {
+  searchInput.value = '';
+  searchQuery = '';
+  btnClearSearch.classList.add('hidden');
+  renderCards();
+  searchInput.focus();
+});
 
 companyPills.addEventListener('click', e => {
   const p = e.target.closest('.pill');
@@ -935,15 +947,6 @@ companyPills.addEventListener('click', e => {
 });
 
 document.addEventListener('click', e => {
-  const cb = e.target.closest('button[data-copy]');
-  if (cb) {
-    navigator.clipboard.writeText(cb.dataset.copy).then(() => {
-      const orig = cb.innerHTML;
-      cb.innerHTML = '✅ Copied';
-      setTimeout(() => { cb.innerHTML = orig; }, 1200);
-    });
-    return;
-  }
   const db = e.target.closest('button[data-delete]');
   if (db) {
     if (confirm('Delete this contact?')) deleteContact(parseInt(db.dataset.delete, 10));

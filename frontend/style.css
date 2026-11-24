@@ -261,20 +261,24 @@ html, body {
   color: var(--text-3);
 }
 
-.counter-badge {
-  font-size: 11px;
-  font-weight: 700;
-  background: var(--primary-soft);
-  color: var(--primary);
-  min-width: 22px;
-  height: 20px;
+.clear-search-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border);
+  color: var(--text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  padding: 0 6px;
-  font-family: var(--mono);
+  cursor: pointer;
   flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.clear-search-btn:hover {
+  background: var(--border-strong);
+  color: #fff;
 }
 
 .pills-scroll-track {
