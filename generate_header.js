@@ -33,7 +33,9 @@ if (mode === "bundle") {
   writeFileSync(outPath, out);
   console.log(`  ✅ ${outPath} (${(buffer.length / 1024).toFixed(1)} KB)`);
 } else if (mode === "pwa") {
-  // Generate manifest.json and sw.js headers
+  // Generate manifest.json, sw.js, and launcher icon headers
   genHeader("./frontend/dist/manifest.json", "MANIFEST_JSON", "./manifest_json.h");
   genHeader("./frontend/dist/sw.js", "SW_JS", "./sw_js.h");
+  genHeader("./frontend/icon-192.png", "ICON_192_PNG", "./icon_192_png.h");
+  genHeader("./frontend/icon-512.png", "ICON_512_PNG", "./icon_512_png.h");
 }

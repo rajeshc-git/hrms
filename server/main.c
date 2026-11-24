@@ -41,6 +41,8 @@ static int g_db_fd = -1;
 #include "frontend_bundle.h"
 #include "manifest_json.h"
 #include "sw_js.h"
+#include "icon_192_png.h"
+#include "icon_512_png.h"
 
 static void init_database(void) {
     mkdir("/data", 0755);
@@ -140,6 +142,18 @@ static void handle_client(int fd) {
     if (strncmp(buf, "GET /sw.js", 10) == 0 && (buf[10] == ' ' || buf[10] == '?')) {
         char hdr[256]; int hl = snprintf(hdr, sizeof(hdr), "HTTP/1.1 200 OK\r\nContent-Type: application/javascript\r\nService-Worker-Allowed: /\r\nCache-Control: no-cache\r\nConnection: close\r\nContent-Length: %zu\r\n\r\n", SW_JS_LEN);
         write_all(fd, hdr, hl); write_all(fd, SW_JS_DATA, SW_JS_LEN); close(fd); return;
+    }
+
+    /* Serve PWA PNG launcher icons (iOS & Android) */
+    if ((strncmp(buf, "GET /icon-192.png", 17) == 0 && (buf[17] == ' ' || buf[17] == '?')) ||
+        (strncmp(buf, "GET /apple-touch-icon", 21) == 0)) {
+        char hdr[256]; int hl = snprintf(hdr, sizeof(hdr), "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nCache-Control: public,max-age=86400\r\nConnection: close\r\nContent-Length: %zu\r\n\r\n", ICON_192_PNG_LEN);
+        write_all(fd, hdr, hl); write_all(fd, ICON_192_PNG_DATA, ICON_192_PNG_LEN); close(fd); return;
+    }
+
+    if (strncmp(buf, "GET /icon-512.png", 17) == 0 && (buf[17] == ' ' || buf[17] == '?')) {
+        char hdr[256]; int hl = snprintf(hdr, sizeof(hdr), "HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nCache-Control: public,max-age=86400\r\nConnection: close\r\nContent-Length: %zu\r\n\r\n", ICON_512_PNG_LEN);
+        write_all(fd, hdr, hl); write_all(fd, ICON_512_PNG_DATA, ICON_512_PNG_LEN); close(fd); return;
     }
 
     if (strncmp(buf, "GET /api/contacts", 17) == 0) {

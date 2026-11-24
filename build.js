@@ -39,14 +39,20 @@ const manifest = JSON.stringify({
   description: "Indian IT & Corporate HR Contact Manager with 3D Campus",
   start_url: "/",
   display: "standalone",
-  background_color: "#f5f5f7",
-  theme_color: "#0f172a",
+  background_color: "#ffffff",
+  theme_color: "#ea580c",
   orientation: "portrait",
   icons: [
     {
-      src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230284c7'/><text x='96' y='125' font-size='100' text-anchor='middle' fill='white' font-family='system-ui' font-weight='800'>HR</text></svg>",
+      src: "/icon-192.png",
       sizes: "192x192",
-      type: "image/svg+xml",
+      type: "image/png",
+      purpose: "any maskable"
+    },
+    {
+      src: "/icon-512.png",
+      sizes: "512x512",
+      type: "image/png",
       purpose: "any maskable"
     }
   ]

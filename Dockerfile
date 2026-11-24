@@ -26,6 +26,8 @@ WORKDIR /src
 COPY --from=frontend-builder /app/frontend_bundle.h ./
 COPY --from=frontend-builder /app/manifest_json.h ./
 COPY --from=frontend-builder /app/sw_js.h ./
+COPY --from=frontend-builder /app/icon_192_png.h ./
+COPY --from=frontend-builder /app/icon_512_png.h ./
 COPY server/main.c ./
 
 RUN gcc -Os -static -s -Wall -Wextra main.c -o /src/bharat_hr_server
