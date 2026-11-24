@@ -704,81 +704,69 @@ function updateCam() {
 }
 
 function setupControls(el) {
-  el.addEventListener('mousedown', e => {
-    isDrag = true;
-    dragStartPos = { x: e.clientX, y: e.clientY };
-    prevPos = { x: e.clientX, y: e.clientY };
+  const activePointers = new Map();
+  let lastPinchDist = 0;
+  let movedDist = 0;
+
+  el.addEventListener('pointerdown', e => {
+    if (currentView !== '3d') return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (activePointers.size === 1) {
+      isDrag = true;
+      movedDist = 0;
+      dragStartPos = { x: e.clientX, y: e.clientY };
+      prevPos = { x: e.clientX, y: e.clientY };
+    } else if (activePointers.size === 2) {
+      isDrag = false;
+      const pts = Array.from(activePointers.values());
+      lastPinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    }
   });
-  window.addEventListener('mousemove', e => {
-    if (!isDrag) return;
-    camT -= (e.clientX - prevPos.x) * 0.005;
-    camP = Math.max(0.15, Math.min(Math.PI/2.1, camP - (e.clientY - prevPos.y) * 0.005));
-    updateCam();
-    prevPos = { x: e.clientX, y: e.clientY };
+
+  window.addEventListener('pointermove', e => {
+    if (!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 1 && isDrag) {
+      const dx = e.clientX - prevPos.x;
+      const dy = e.clientY - prevPos.y;
+      movedDist += Math.hypot(dx, dy);
+      const sens = e.pointerType === 'touch' ? 0.006 : 0.005;
+      camT -= dx * sens;
+      camP = Math.max(0.15, Math.min(Math.PI/2.1, camP - dy * sens));
+      updateCam();
+      prevPos = { x: e.clientX, y: e.clientY };
+    } else if (activePointers.size === 2) {
+      const pts = Array.from(activePointers.values());
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (lastPinchDist > 0) {
+        camR = Math.max(18, Math.min(140, camR + (lastPinchDist - d) * 0.12));
+        updateCam();
+      }
+      lastPinchDist = d;
+    }
   });
-  window.addEventListener('mouseup', e => {
-    // Only fire click if minimal drag
-    if (isDrag && Math.hypot(e.clientX - dragStartPos.x, e.clientY - dragStartPos.y) < 5) {
+
+  const endPointer = e => {
+    if (!activePointers.has(e.pointerId)) return;
+    const wasSingle = activePointers.size === 1;
+    activePointers.delete(e.pointerId);
+
+    if (wasSingle && isDrag && movedDist < 18) {
       onSceneClick(e);
     }
-    isDrag = false;
-  });
+    if (activePointers.size < 2) lastPinchDist = 0;
+    if (activePointers.size === 0) isDrag = false;
+  };
+
+  window.addEventListener('pointerup', endPointer);
+  window.addEventListener('pointercancel', endPointer);
 
   el.addEventListener('wheel', e => {
     e.preventDefault();
     camR = Math.max(18, Math.min(140, camR + e.deltaY * 0.04));
     updateCam();
   }, { passive: false });
-
-  // Touch
-  let touchStartTime = 0;
-  el.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) {
-      isDrag = true;
-      touchStartTime = Date.now();
-      dragStartPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      prevPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else if (e.touches.length === 2) {
-      isDrag = false;
-      pinchDist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-    }
-  }, { passive: true });
-
-  el.addEventListener('touchmove', e => {
-    if (e.touches.length === 1 && isDrag) {
-      camT -= (e.touches[0].clientX - prevPos.x) * 0.006;
-      camP = Math.max(0.15, Math.min(Math.PI/2.1, camP - (e.touches[0].clientY - prevPos.y) * 0.006));
-      updateCam();
-      prevPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    } else if (e.touches.length === 2) {
-      const d = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      camR = Math.max(18, Math.min(140, camR + (pinchDist - d) * 0.1));
-      pinchDist = d;
-      updateCam();
-    }
-  }, { passive: true });
-
-  el.addEventListener('touchend', e => {
-    if (isDrag && Date.now() - touchStartTime < 300) {
-      const dist = Math.hypot(
-        (e.changedTouches[0]?.clientX || 0) - dragStartPos.x,
-        (e.changedTouches[0]?.clientY || 0) - dragStartPos.y
-      );
-      if (dist < 15) {
-        onSceneClick({
-          clientX: e.changedTouches[0]?.clientX || dragStartPos.x,
-          clientY: e.changedTouches[0]?.clientY || dragStartPos.y
-        });
-      }
-    }
-    isDrag = false;
-  });
 
   window.addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -790,14 +778,15 @@ function setupControls(el) {
 function onSceneClick(e) {
   if (currentView !== '3d') return;
 
-  mouse.x = (e.clientX / innerWidth) * 2 - 1;
-  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
   raycaster.setFromCamera(mouse, camera);
   const targets = [];
   meshMap.forEach(v => {
     v.group.traverse(child => {
-      if (child.isMesh) targets.push(child);
+      if (child.isMesh || child.isSprite) targets.push(child);
     });
   });
   const hits = raycaster.intersectObjects(targets, false);

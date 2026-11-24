@@ -56,6 +56,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   z-index: 1;
+  touch-action: none;
   transition: opacity 0.2s ease;
 }
 #three-container.three-hidden {
