@@ -121,11 +121,46 @@ static void write_all(int fd, const void *data, size_t len) {
     }
 }
 
+static void json_escape(const char *src, char *dest, size_t dlen) {
+    size_t j = 0;
+    for (size_t i = 0; src && src[i] && j + 2 < dlen; i++) {
+        unsigned char c = (unsigned char)src[i];
+        if (c == '"' || c == '\\') { dest[j++] = '\\'; dest[j++] = (char)c; }
+        else if (c == '\n') { dest[j++] = '\\'; dest[j++] = 'n'; }
+        else if (c == '\r') { dest[j++] = '\\'; dest[j++] = 'r'; }
+        else if (c >= 0x20) { dest[j++] = (char)c; }
+    }
+    dest[j] = '\0';
+}
+
 static void handle_client(int fd) {
-    char buf[8192];
-    ssize_t n = read(fd, buf, sizeof(buf) - 1);
-    if (n <= 0) { close(fd); return; }
-    buf[n] = '\0';
+    char buf[16384];
+    ssize_t total = 0;
+    char *hdr_end = NULL;
+
+    /* Read full HTTP headers + Content-Length body across TCP packets */
+    for (int tries = 0; tries < 50 && total < (ssize_t)sizeof(buf) - 1; tries++) {
+        ssize_t n = read(fd, buf + total, sizeof(buf) - 1 - (size_t)total);
+        if (n > 0) {
+            total += n;
+            buf[total] = '\0';
+            hdr_end = strstr(buf, "\r\n\r\n");
+            if (hdr_end) {
+                size_t hdr_len = (size_t)(hdr_end - buf) + 4;
+                size_t content_len = 0;
+                const char *cl = strcasestr(buf, "\r\nContent-Length:");
+                if (cl && cl < hdr_end) content_len = (size_t)strtoul(cl + 17, NULL, 10);
+                if ((size_t)total >= hdr_len + content_len) break;
+            }
+        } else if (n == 0) {
+            break;
+        } else {
+            if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) { usleep(2000); continue; }
+            break;
+        }
+    }
+    if (total <= 0) { close(fd); return; }
+    buf[total] = '\0';
 
     if (strncmp(buf, "OPTIONS ", 8) == 0) {
         const char *r = "HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,POST,DELETE,OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n";
@@ -157,20 +192,27 @@ static void handle_client(int fd) {
     }
 
     if (strncmp(buf, "GET /api/contacts", 17) == 0) {
-        char hdr[256]; snprintf(hdr, sizeof(hdr), "HTTP/1.1 200 OK\r\nContent-Type: application/json;charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n");
-        write(fd, hdr, strlen(hdr)); write(fd, "[", 1);
-        char item[512]; bool first = true;
+        char hdr[256]; snprintf(hdr, sizeof(hdr), "HTTP/1.1 200 OK\r\nContent-Type: application/json;charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n");
+        write_all(fd, hdr, strlen(hdr)); write_all(fd, "[", 1);
+        char item[1024]; bool first = true;
+        char en[128], ep[48], ec[128], er[128], ee[128], eno[320];
         for (uint32_t i = 0; i < g_contact_count; i++) {
             ContactRecord *r = &g_contacts[i]; if (!r->active) continue;
-            int l = snprintf(item, sizeof(item), "%s{\"id\":%u,\"name\":\"%s\",\"phone\":\"%s\",\"company\":\"%s\",\"role\":\"%s\",\"email\":\"%s\",\"notes\":\"%s\"}", first?"":"," , r->id, r->name, r->phone, r->company, r->role, r->email, r->notes);
-            first = false; write(fd, item, l);
+            json_escape(r->name, en, sizeof(en));
+            json_escape(r->phone, ep, sizeof(ep));
+            json_escape(r->company, ec, sizeof(ec));
+            json_escape(r->role, er, sizeof(er));
+            json_escape(r->email, ee, sizeof(ee));
+            json_escape(r->notes, eno, sizeof(eno));
+            int l = snprintf(item, sizeof(item), "%s{\"id\":%u,\"name\":\"%s\",\"phone\":\"%s\",\"company\":\"%s\",\"role\":\"%s\",\"email\":\"%s\",\"notes\":\"%s\"}", first?"":"," , r->id, en, ep, ec, er, ee, eno);
+            first = false; write_all(fd, item, (size_t)l);
         }
-        write(fd, "]", 1); close(fd); return;
+        write_all(fd, "]", 1); close(fd); return;
     }
 
     if (strncmp(buf, "POST /api/contacts", 18) == 0) {
         char *body = strstr(buf, "\r\n\r\n"); if (body) body += 4; else body = "";
-        if (g_contact_count >= MAX_CONTACTS) { const char *r = "HTTP/1.1 507 Insufficient Storage\r\nConnection: close\r\n\r\n"; write(fd, r, strlen(r)); close(fd); return; }
+        if (g_contact_count >= MAX_CONTACTS) { const char *r = "HTTP/1.1 507 Insufficient Storage\r\nConnection: close\r\n\r\n"; write_all(fd, r, strlen(r)); close(fd); return; }
         ContactRecord nr; memset(&nr, 0, sizeof(nr)); nr.id = g_next_id++; nr.active = 1;
         json_str(body, "name", nr.name, sizeof(nr.name));
         json_str(body, "phone", nr.phone, sizeof(nr.phone));
@@ -179,8 +221,15 @@ static void handle_client(int fd) {
         json_str(body, "email", nr.email, sizeof(nr.email));
         json_str(body, "notes", nr.notes, sizeof(nr.notes));
         g_contacts[g_contact_count++] = nr; persist_append(&nr);
-        char resp[512]; int l = snprintf(resp, sizeof(resp), "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n{\"id\":%u,\"name\":\"%s\",\"phone\":\"%s\",\"company\":\"%s\",\"role\":\"%s\",\"email\":\"%s\",\"notes\":\"%s\"}", nr.id, nr.name, nr.phone, nr.company, nr.role, nr.email, nr.notes);
-        write(fd, resp, l); close(fd); return;
+        char en[128], ep[48], ec[128], er[128], ee[128], eno[320];
+        json_escape(nr.name, en, sizeof(en));
+        json_escape(nr.phone, ep, sizeof(ep));
+        json_escape(nr.company, ec, sizeof(ec));
+        json_escape(nr.role, er, sizeof(er));
+        json_escape(nr.email, ee, sizeof(ee));
+        json_escape(nr.notes, eno, sizeof(eno));
+        char resp[1024]; int l = snprintf(resp, sizeof(resp), "HTTP/1.1 201 Created\r\nContent-Type: application/json\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n{\"id\":%u,\"name\":\"%s\",\"phone\":\"%s\",\"company\":\"%s\",\"role\":\"%s\",\"email\":\"%s\",\"notes\":\"%s\"}", nr.id, en, ep, ec, er, ee, eno);
+        write_all(fd, resp, (size_t)l); close(fd); return;
     }
 
     if (strncmp(buf, "DELETE /api/contacts/", 21) == 0) {

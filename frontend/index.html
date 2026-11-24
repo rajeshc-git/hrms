@@ -181,6 +181,19 @@
             </div>
           </div>
 
+          <div class="form-field">
+            <label>Company Logo (optional · auto-cropped 1:1)</label>
+            <div class="logo-upload-row">
+              <img id="logo-preview" class="logo-preview hidden" alt="Company logo preview">
+              <div id="logo-placeholder" class="logo-placeholder">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              </div>
+              <label for="input-company-logo" class="btn-upload-logo">Choose Logo</label>
+              <input type="file" id="input-company-logo" accept="image/*" class="hidden">
+              <button type="button" id="btn-clear-logo" class="btn-clear-logo hidden">Remove</button>
+            </div>
+          </div>
+
           <div class="form-actions">
             <button type="button" id="btn-cancel-form" class="btn-secondary">Cancel</button>
             <button type="submit" id="btn-submit" class="btn-primary">Save Contact</button>

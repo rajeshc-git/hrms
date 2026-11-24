@@ -17,26 +17,63 @@ function formatIndianPhoneNumber(raw) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Company Branding Data — Emoji Icons + Colors + Short Codes
+// Company Branding & Custom Auto-Cropped Logo Store
 // ═══════════════════════════════════════════════════════════════════════════════
 const COMPANIES = {
-  'TCS':               { emoji: '🏛️', color: 0x1a73e8, short: 'TCS',  fullName: 'Tata Consultancy Services' },
-  'Infosys':           { emoji: '💎', color: 0x00bcd4, short: 'INFY', fullName: 'Infosys Limited' },
-  'Wipro':             { emoji: '🌿', color: 0x4caf50, short: 'WPRO', fullName: 'Wipro Limited' },
-  'HCLTech':           { emoji: '⚙️', color: 0x5c6bc0, short: 'HCL',  fullName: 'HCL Technologies' },
-  'Tech Mahindra':     { emoji: '🔧', color: 0xe91e63, short: 'TECHM', fullName: 'Tech Mahindra' },
-  'Cognizant':         { emoji: '🧠', color: 0x009688, short: 'CTSH', fullName: 'Cognizant Technology' },
-  'LTIMindtree':       { emoji: '🌲', color: 0xff9800, short: 'LTIM', fullName: 'LTIMindtree Limited' },
-  'Mphasis':           { emoji: '🚀', color: 0x9c27b0, short: 'MPHL', fullName: 'Mphasis Limited' },
-  'Persistent Systems':{ emoji: '🔬', color: 0x26a69a, short: 'PSYS', fullName: 'Persistent Systems' },
-  'Zoho':              { emoji: '🦁', color: 0xf44336, short: 'ZOHO', fullName: 'Zoho Corporation' },
-  'Capgemini India':   { emoji: '🗼', color: 0x0097a7, short: 'CAP',  fullName: 'Capgemini India' },
-  'Accenture India':   { emoji: '📐', color: 0x7b1fa2, short: 'ACN',  fullName: 'Accenture India' },
-  'Oracle India':      { emoji: '☁️', color: 0xff5722, short: 'ORCL', fullName: 'Oracle India' }
+  'TCS':               { color: 0x1a73e8, short: 'TCS',  fullName: 'Tata Consultancy Services' },
+  'Infosys':           { color: 0x00bcd4, short: 'INFY', fullName: 'Infosys Limited' },
+  'Wipro':             { color: 0x4caf50, short: 'WPRO', fullName: 'Wipro Limited' },
+  'HCLTech':           { color: 0x5c6bc0, short: 'HCL',  fullName: 'HCL Technologies' },
+  'Tech Mahindra':     { color: 0xe91e63, short: 'TECH', fullName: 'Tech Mahindra' },
+  'Cognizant':         { color: 0x009688, short: 'CTSH', fullName: 'Cognizant Technology' },
+  'LTIMindtree':       { color: 0xff9800, short: 'LTIM', fullName: 'LTIMindtree Limited' },
+  'Mphasis':           { color: 0x9c27b0, short: 'MPHL', fullName: 'Mphasis Limited' },
+  'Persistent Systems':{ color: 0x26a69a, short: 'PSYS', fullName: 'Persistent Systems' },
+  'Zoho':              { color: 0xf44336, short: 'ZOHO', fullName: 'Zoho Corporation' },
+  'Capgemini India':   { color: 0x0097a7, short: 'CAP',  fullName: 'Capgemini India' },
+  'Accenture India':   { color: 0x7b1fa2, short: 'ACN',  fullName: 'Accenture India' },
+  'Oracle India':      { color: 0xff5722, short: 'ORCL', fullName: 'Oracle India' }
 };
 
+let companyLogos = {};
+try { companyLogos = JSON.parse(localStorage.getItem('bharat_hr_company_logos') || '{}'); } catch {}
+
+function saveCompanyLogo(company, dataUrl) {
+  if (!company) return;
+  if (dataUrl) companyLogos[company] = dataUrl;
+  else delete companyLogos[company];
+  try { localStorage.setItem('bharat_hr_company_logos', JSON.stringify(companyLogos)); } catch {}
+}
+
+function getCompanyLogo(company) {
+  return companyLogos[company] || '';
+}
+
 function getCompanyData(name) {
-  return COMPANIES[name] || { emoji: '🏢', color: 0x607d8b, short: name.slice(0,4).toUpperCase(), fullName: name };
+  return COMPANIES[name] || { color: 0x475569, short: (name || 'CO').slice(0, 4).toUpperCase(), fullName: name };
+}
+
+function cropLogoToSquare(file, size = 128) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(img.width, img.height);
+        const sx = (img.width - s) / 2;
+        const sy = (img.height - s) / 2;
+        const c = document.createElement('canvas');
+        c.width = size; c.height = size;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -67,6 +104,11 @@ const customCompanyInput = document.getElementById('custom-company-input');
 const inputRole = document.getElementById('input-role');
 const inputEmail = document.getElementById('input-email');
 const inputNotes = document.getElementById('input-notes');
+const inputCompanyLogo = document.getElementById('input-company-logo');
+const logoPreview = document.getElementById('logo-preview');
+const logoPlaceholder = document.getElementById('logo-placeholder');
+const btnClearLogo = document.getElementById('btn-clear-logo');
+let pendingLogoDataUrl = '';
 const searchInput = document.getElementById('search-input');
 const btnClearSearch = document.getElementById('btn-clear-search');
 const companyPills = document.getElementById('company-pills');
@@ -140,11 +182,10 @@ function renderPills() {
 
   companyPills.innerHTML = `<button class="pill ${activeCompanyFilter==='all'?'active':''}" data-company="all">All (${contacts.length})</button>`;
   cos.forEach(co => {
-    const d = getCompanyData(co);
     const btn = document.createElement('button');
     btn.className = `pill ${activeCompanyFilter.toLowerCase()===co.toLowerCase()?'active':''}`;
     btn.dataset.company = co;
-    btn.textContent = `${d.emoji} ${co} (${counts[co]})`;
+    btn.textContent = `${co} (${counts[co]})`;
     companyPills.appendChild(btn);
   });
 }
@@ -168,21 +209,28 @@ function getInitials(name) {
 
 function cardHtml(c) {
   const d = getCompanyData(c.company);
-  const ph = c.phone.replace(/[^\d+]/g, '');
+  const logo = getCompanyLogo(c.company);
+  const ph = (c.phone || '').replace(/[^\d+]/g, '');
   const digits = ph.replace(/\D/g, '').slice(-10);
-  const wa = `https://wa.me/91${digits}?text=Hi%20${encodeURIComponent(c.name)}%2C%20regarding%20roles%20at%20${encodeURIComponent(c.company)}`;
+  const wa = `https://wa.me/91${digits}?text=Hi%20${encodeURIComponent(c.name || '')}%2C%20regarding%20roles%20at%20${encodeURIComponent(c.company || '')}`;
   const bgHex = '#' + d.color.toString(16).padStart(6, '0');
+  const avatarHtml = logo
+    ? `<img class="hr-avatar" src="${logo}" alt="${esc(c.company)}" style="object-fit:cover;background:#fff;border:1px solid #e4e4e7">`
+    : `<div class="hr-avatar" style="background:${bgHex}">${esc(getInitials(c.name))}</div>`;
+  const logoBadge = logo
+    ? `<img class="company-mini-logo" src="${logo}" alt="">`
+    : '';
   return `
     <div class="hr-row-card" data-id="${c.id}">
       <div class="card-top">
         <div class="hr-identity">
-          <div class="hr-avatar" style="background:${bgHex}">${esc(getInitials(c.name))}</div>
+          ${avatarHtml}
           <div class="hr-name-role">
-            <span class="hr-name">${esc(c.name)}</span>
+            <span class="hr-name">${esc(c.name || 'Unnamed HR')}</span>
             <span class="hr-role">${esc(c.role||'HR')}</span>
           </div>
         </div>
-        <span class="hr-company-tag">${d.emoji} ${esc(c.company)}</span>
+        <span class="hr-company-tag">${logoBadge}${esc(c.company)}</span>
       </div>
       <div class="card-middle">
         <span class="hr-phone">${esc(c.phone)}</span>
@@ -606,7 +654,7 @@ function rebuild3DWorld() {
     }
 
     // ── Billboard label ──
-    const label = makeLabel(d.emoji, co, cnt, d.color);
+    const label = makeLabel(co, cnt, d.color);
     label.position.y = h + 5;
     group.add(label);
 
@@ -615,69 +663,95 @@ function rebuild3DWorld() {
   });
 }
 
-function makeLabel(emoji, name, count, color) {
+function makeLabel(name, count, color) {
   const c = document.createElement('canvas');
   c.width = 1024; c.height = 392;
   const ctx = c.getContext('2d');
   ctx.scale(2, 2);
 
-  // Shadow
-  ctx.shadowColor = 'rgba(0,0,0,0.22)';
-  ctx.shadowBlur = 12;
-  ctx.shadowOffsetY = 3;
-
-  // Card background with crisp white + black border
-  ctx.fillStyle = '#ffffff';
-  roundRect(ctx, 8, 8, 496, 180, 18);
-  ctx.fill();
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 3;
-  roundRect(ctx, 8, 8, 496, 180, 18);
-  ctx.stroke();
-
-  // Left color accent bar
-  ctx.fillStyle = '#' + new THREE.Color(color).getHexString();
-  roundRect(ctx, 10, 10, 12, 176, 8);
-  ctx.fill();
-
-  ctx.shadowBlur = 0;
-
-  // Company emoji icon (large)
-  ctx.font = '56px serif';
-  ctx.textAlign = 'left';
-  ctx.fillText(emoji, 34, 78);
-
-  // Company name — pure black
-  ctx.fillStyle = '#000000';
-  ctx.font = 'bold 31px system-ui, sans-serif';
-  ctx.fillText(name.length > 16 ? name.slice(0, 15) + '…' : name, 100, 65);
-
-  // Contact count — pure black/dark high contrast
-  ctx.fillStyle = count > 0 ? '#000000' : '#3f3f46';
-  ctx.font = '700 22px system-ui, monospace';
-  const countText = count > 0 ? `● ${count} HR Contact${count>1?'s':''}` : '○ No contacts';
-  ctx.fillText(countText, 100, 100);
-
-  // Stock ticker style
-  ctx.fillStyle = '#27272a';
-  ctx.font = '700 18px monospace';
-  ctx.textAlign = 'right';
+  const hexColor = '#' + new THREE.Color(color).getHexString();
   const short = COMPANIES[name]?.short || name.slice(0,4).toUpperCase();
-  ctx.fillText(`NSE: ${short}`, 488, 160);
+  const logoUrl = getCompanyLogo(name);
 
-  // "TAP" hint
-  if (count > 0) {
+  function drawCard(logoImg) {
+    ctx.clearRect(0, 0, 512, 196);
+    ctx.shadowColor = 'rgba(0,0,0,0.22)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 3;
+
+    // Card background with crisp white + black border
+    ctx.fillStyle = '#ffffff';
+    roundRect(ctx, 8, 8, 496, 180, 18);
+    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 3;
+    roundRect(ctx, 8, 8, 496, 180, 18);
+    ctx.stroke();
+
+    // Left color accent bar
+    ctx.fillStyle = hexColor;
+    roundRect(ctx, 10, 10, 12, 176, 8);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Company Logo (uploaded 1:1) or crisp Monogram Badge
+    if (logoImg) {
+      ctx.save();
+      roundRect(ctx, 32, 34, 56, 56, 12);
+      ctx.clip();
+      ctx.drawImage(logoImg, 32, 34, 56, 56);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = hexColor;
+      roundRect(ctx, 32, 34, 56, 56, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(short.slice(0, 4), 60, 68);
+    }
+
+    // Company name — pure black
     ctx.fillStyle = '#000000';
-    ctx.font = 'bold 16px system-ui, sans-serif';
+    ctx.font = 'bold 30px system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('TAP TO VIEW ▸', 100, 160);
+    ctx.fillText(name.length > 16 ? name.slice(0, 15) + '…' : name, 102, 62);
+
+    // Contact count — pure black/dark high contrast
+    ctx.fillStyle = count > 0 ? '#000000' : '#3f3f46';
+    ctx.font = '700 22px system-ui, monospace';
+    const countText = count > 0 ? `● ${count} HR Contact${count>1?'s':''}` : '○ No contacts';
+    ctx.fillText(countText, 102, 98);
+
+    // Stock ticker style
+    ctx.fillStyle = '#27272a';
+    ctx.font = '700 18px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`NSE: ${short}`, 488, 160);
+
+    // "TAP" hint
+    if (count > 0) {
+      ctx.fillStyle = '#000000';
+      ctx.font = 'bold 16px system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('TAP TO VIEW ▸', 102, 160);
+    }
   }
+
+  drawCard(null);
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.minFilter = THREE.LinearFilter;
   tex.magFilter = THREE.LinearFilter;
   tex.anisotropy = renderer ? renderer.capabilities.getMaxAnisotropy() : 4;
+
+  if (logoUrl) {
+    const img = new Image();
+    img.onload = () => { drawCard(img); tex.needsUpdate = true; };
+    img.src = logoUrl;
+  }
+
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: 1.0, depthTest: false });
   const sprite = new THREE.Sprite(mat);
   sprite.scale.set(14, 5.4, 1);
@@ -810,12 +884,11 @@ function openSheet(co) {
 }
 
 function renderSheetForCompany(co) {
-  const d = getCompanyData(co);
   const list = contacts.filter(c => c.company.toLowerCase() === co.toLowerCase());
-  popupCompanyCount.textContent = `${d.emoji} ${list.length} HR Contact${list.length===1?'':'s'}`;
+  popupCompanyCount.textContent = `${list.length} HR Contact${list.length===1?'':'s'}`;
 
   if (!list.length) {
-    popupCompanyContacts.innerHTML = `<div style="text-align:center;padding:2rem 1rem;color:#aeaeb2;font-size:14px;">No contacts for ${esc(co)} yet.</div>`;
+    popupCompanyContacts.innerHTML = `<div style="text-align:center;padding:2rem 1rem;color:#3f3f46;font-size:14px;">No contacts for ${esc(co)} yet.</div>`;
     return;
   }
   popupCompanyContacts.innerHTML = list.map(c => cardHtml(c)).join('');
@@ -891,6 +964,36 @@ popupCompanyModal.addEventListener('click', e => { if (e.target === popupCompany
 btnCloseSheet.addEventListener('click', () => popupCompanyModal.classList.add('hidden'));
 modalAddContact.addEventListener('click', e => { if (e.target === modalAddContact) modalAddContact.classList.add('hidden'); });
 
+function resetLogoUI() {
+  pendingLogoDataUrl = '';
+  inputCompanyLogo.value = '';
+  logoPreview.src = '';
+  logoPreview.classList.add('hidden');
+  logoPlaceholder.classList.remove('hidden');
+  btnClearLogo.classList.add('hidden');
+}
+
+function showLogoPreview(url) {
+  pendingLogoDataUrl = url;
+  logoPreview.src = url;
+  logoPreview.classList.remove('hidden');
+  logoPlaceholder.classList.add('hidden');
+  btnClearLogo.classList.remove('hidden');
+}
+
+inputCompanyLogo.addEventListener('change', async e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const cropped = await cropLogoToSquare(file, 128);
+    showLogoPreview(cropped);
+  } catch {
+    alert('Could not process image. Please try another file.');
+  }
+});
+
+btnClearLogo.addEventListener('click', resetLogoUI);
+
 companySelect.addEventListener('change', e => {
   if (e.target.value === '__custom__') {
     customCompanyInput.classList.remove('hidden');
@@ -899,6 +1002,8 @@ companySelect.addEventListener('change', e => {
   } else {
     customCompanyInput.classList.add('hidden');
     customCompanyInput.required = false;
+    const existing = getCompanyLogo(e.target.value);
+    if (existing) showLogoPreview(existing);
   }
 });
 
@@ -909,6 +1014,8 @@ contactForm.addEventListener('submit', async e => {
   let co = companySelect.value;
   if (co === '__custom__') co = customCompanyInput.value.trim();
   if (!co) { alert('Select a company.'); return; }
+
+  if (pendingLogoDataUrl) saveCompanyLogo(co, pendingLogoDataUrl);
 
   await createContact({
     name: inputName.value.trim(),
@@ -921,6 +1028,7 @@ contactForm.addEventListener('submit', async e => {
   contactForm.reset();
   companySelect.value = '';
   customCompanyInput.classList.add('hidden');
+  resetLogoUI();
   modalAddContact.classList.add('hidden');
 });
 
